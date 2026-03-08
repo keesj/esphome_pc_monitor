@@ -14,13 +14,22 @@ A PC temperature monitoring system that exposes CPU and GPU temperatures as ESPH
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/keesj/esphome_pc_monitor.git
+cd esphome_pc_monitor
+pip install .
+```
+
+
+
+```
+pip install git+https://github.com/keesj/esphome_pc_monitor.git
 ```
 
 ## Usage
 
 ```bash
-python esphome_pc_monitor.py [OPTIONS]
+esphome_pc_monitor [OPTIONS]
+```
 ```
 
 ### Options
