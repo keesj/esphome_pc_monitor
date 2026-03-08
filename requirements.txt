@@ -1,1 +1,2 @@
-aioesphomeserver
+git+https://github.com/peterkeen/aioesphomeserver.git
+colored

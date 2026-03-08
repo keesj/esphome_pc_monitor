@@ -21,7 +21,7 @@ def generate_mac_from_name(name: str) -> str:
 
 
 class TemperatureSensor(SensorEntity):
-    def __init__(self, name, object_id, sensor_type):
+    def __init__(self, name, object_id, sensor_type, gpu_index=None):
         super().__init__(
             name=name,
             object_id=object_id,
@@ -30,12 +30,38 @@ class TemperatureSensor(SensorEntity):
             device_class="temperature",
         )
         self.sensor_type = sensor_type
+        self.gpu_index = gpu_index
 
     async def read_temperature(self):
         if self.sensor_type == "cpu":
             return await self.read_cpu_temperature()
         elif self.sensor_type == "gpu":
             return await self.read_gpu_temperature()
+        elif self.sensor_type == "gpu_stats":
+            return await self.read_gpu_stats()
+        return 0.0
+
+    async def read_gpu_stats(self):
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "nvidia-smi",
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            if stdout:
+                temps = [
+                    float(t.strip())
+                    for t in stdout.decode().strip().split("\n")
+                    if t.strip()
+                ]
+                if temps:
+                    return sum(temps) / len(temps)
+            return 0.0
+        except Exception as e:
+            logger.debug(f"Failed to read GPU stats: {e}")
         return 0.0
 
     async def read_cpu_temperature(self):
@@ -62,13 +88,41 @@ class TemperatureSensor(SensorEntity):
             )
             stdout, stderr = await process.communicate()
             if stdout:
-                temp_str = stdout.decode().strip()
-                return float(temp_str)
+                temps = [
+                    float(t.strip())
+                    for t in stdout.decode().strip().split("\n")
+                    if t.strip()
+                ]
+                if self.gpu_index is not None and self.gpu_index < len(temps):
+                    return temps[self.gpu_index]
+                return temps[0] if temps else 0.0
             if stderr:
                 logger.debug(f"nvidia-smi stderr: {stderr.decode().strip()}")
         except Exception as e:
             logger.debug(f"Failed to read GPU temp: {e}")
         return 0.0
+
+    async def read_all_gpus(self):
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "nvidia-smi",
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            if stdout:
+                temps = [
+                    float(t.strip())
+                    for t in stdout.decode().strip().split("\n")
+                    if t.strip()
+                ]
+                return temps
+            return []
+        except Exception as e:
+            logger.debug(f"Failed to read GPU temps: {e}")
+            return []
 
 
 async def main():
@@ -106,21 +160,66 @@ async def main():
     )
     device.add_entity(cpu_sensor)
 
-    gpu_sensor = TemperatureSensor(
-        name="GPU Temperature",
-        object_id="gpu_temperature",
-        sensor_type="gpu",
-    )
-    device.add_entity(gpu_sensor)
+    gpus = await get_gpu_count()
+    logger.info(f"Detected {gpus} GPU(s)")
+
+    gpu_sensors = []
+    stats_sensor = None
+    if gpus > 0:
+        if gpus == 1:
+            gpu_sensor = TemperatureSensor(
+                name="GPU Temperature",
+                object_id="gpu_temperature",
+                sensor_type="gpu",
+                gpu_index=0,
+            )
+            device.add_entity(gpu_sensor)
+            gpu_sensors.append(gpu_sensor)
+        else:
+            for i in range(gpus):
+                gpu_sensor = TemperatureSensor(
+                    name=f"GPU {i} Temperature",
+                    object_id=f"gpu_{i}_temperature",
+                    sensor_type="gpu",
+                    gpu_index=i,
+                )
+                device.add_entity(gpu_sensor)
+                gpu_sensors.append(gpu_sensor)
+
+            if gpus > 4:
+                stats_sensor = TemperatureSensor(
+                    name="GPU Statistics",
+                    object_id="gpu_statistics",
+                    sensor_type="gpu_stats",
+                )
+                device.add_entity(stats_sensor)
 
     async def update_states():
         while True:
             try:
                 cpu_temp = await cpu_sensor.read_temperature()
-                gpu_temp = await gpu_sensor.read_temperature()
-                logger.info(f"CPU: {cpu_temp}°C, GPU: {gpu_temp}°C")
                 await cpu_sensor.set_state(cpu_temp)
-                await gpu_sensor.set_state(gpu_temp)
+
+                if gpus == 1:
+                    gpu_temp = await gpu_sensors[0].read_temperature()
+                    await gpu_sensors[0].set_state(gpu_temp)
+                elif gpus > 1:
+                    for i, sensor in enumerate(gpu_sensors):
+                        temp = await sensor.read_temperature()
+                        await sensor.set_state(temp)
+
+                    if gpus > 4 and stats_sensor is not None:
+                        all_temps = await gpu_sensors[0].read_all_gpus()
+                        if all_temps:
+                            avg_temp = sum(all_temps) / len(all_temps)
+                            max_temp = max(all_temps)
+                            stats = f"Avg: {avg_temp:.1f}°C, Max: {max_temp:.1f}°C"
+                            await stats_sensor.set_state(avg_temp)
+                            logger.info(f"GPU Stats: {stats}")
+
+                gpu_temps = [round(await s.read_temperature(), 1) for s in gpu_sensors]
+                logger.info(f"CPU: {cpu_temp}°C, GPU(s): {gpu_temps}")
+
             except Exception as e:
                 logger.error(f"Error updating sensor state: {e}")
 
@@ -132,6 +231,26 @@ async def main():
         device.run(api_port=args.api_port, web_port=args.web_port),
         update_states(),
     )
+
+
+async def get_gpu_count():
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "nvidia-smi",
+            "--query-gpu=index",
+            "--format=csv,noheader",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await process.communicate()
+        if stdout:
+            gpus = [
+                int(g.strip()) for g in stdout.decode().strip().split("\n") if g.strip()
+            ]
+            return max(gpus) + 1 if gpus else 0
+    except Exception as e:
+        logger.debug(f"Failed to count GPUs: {e}")
+    return 0
 
 
 if __name__ == "__main__":
