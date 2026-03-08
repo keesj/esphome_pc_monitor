@@ -51,9 +51,31 @@ python esphome_pc_monitor.py --name my-pc --api-port 6053 --web-port 8083
 - Sensors are updated every 5 seconds
 - MAC address is deterministically generated from device name using MD5 hash
 
-##
+## About AI
 
-Generator opencode + qwen3.5
+Following [unsloth](https://unsloth.ai/docs/models/qwen3.5)
+Local LLM running on an NVIDIA spark + opencode + qwen 3.5
+
+Design/Review & prompting keesj
+
+## Design Decisions
+
+### Single GPU Temperature Reader
+All GPU temperature reads go through a single `read_gpu_temperatures()` function that returns an array of all GPU temperatures. This avoids multiple `nvidia-smi` calls per update cycle.
+
+### Sensor Update Pattern
+- `update_states()` is the only place that reads sensor data (every 5 seconds)
+- Sensor classes no longer directly read hardware - they only provide data to the update loop
+- This centralizes hardware access and simplifies testing
+
+### GPU Sensor Naming
+- 0 GPUs: No GPU sensor shown
+- 1 GPU: Single "GPU Temperature" (no index suffix)
+- 2-4 GPUs: Individual "GPU N Temperature" sensors
+- 5+ GPUs: Individual sensors plus "GPU Statistics" with avg/max
+
+### MAC Address Generation
+MAC addresses are deterministically generated from the device name using MD5 hash. This ensures the same device always has the same MAC regardless of when it's started.
 
 ## License
 
