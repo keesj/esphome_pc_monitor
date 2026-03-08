@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "aioesphomeserver @ git+https://github.com/peterkeen/aioesphomeserver.git",
+    "colored"
 ]
 
 [project.scripts]
