@@ -92,8 +92,14 @@ async def main():
     parser.add_argument(
         "--web-port",
         type=int,
-        default=8083,
-        help="Web interface port (default: 8083)",
+        default=None,
+        help="Web interface port (default: disabled)",
+    )
+    parser.add_argument(
+        "--disable-web",
+        action="store_true",
+        default=True,
+        help="Disable web interface (default: enabled)",
     )
 
     args = parser.parse_args()
@@ -175,8 +181,11 @@ async def main():
 
     logger.info("Starting device...")
 
+    web_port = args.web_port if args.web_port else None
+    logger.info(f"Web interface: {'enabled' if web_port else 'disabled'}")
+
     await asyncio.gather(
-        device.run(api_port=args.api_port, web_port=args.web_port),
+        device.run(api_port=args.api_port, web_port=web_port),
         update_states(),
     )
 
