@@ -95,12 +95,6 @@ async def main():
         default=None,
         help="Web interface port (default: disabled)",
     )
-    parser.add_argument(
-        "--disable-web",
-        action="store_true",
-        default=True,
-        help="Disable web interface (default: enabled)",
-    )
 
     args = parser.parse_args()
 
