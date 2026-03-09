@@ -17,5 +17,4 @@ dependencies = [
 esphome-pc-monitor = "esphome_pc_monitor:main_cli"
 
 [tool.setuptools.packages.find]
-where = ["."]
 include = ["esphome_pc_monitor*"]
