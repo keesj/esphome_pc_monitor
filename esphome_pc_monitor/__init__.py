@@ -175,8 +175,12 @@ async def main():
 
     logger.info("Starting device...")
 
-    web_port = args.web_port if args.web_port else None
-    logger.info(f"Web interface: {'enabled' if web_port else 'disabled'}")
+    if args.web_port:
+        logger.info(f"Web interface enabled on port {args.web_port}")
+        web_port = args.web_port
+    else:
+        logger.info("Web interface disabled")
+        web_port = 0
 
     await asyncio.gather(
         device.run(api_port=args.api_port, web_port=web_port),
