@@ -16,5 +16,8 @@ dependencies = [
 [project.scripts]
 esphome-pc-monitor = "esphome_pc_monitor:main_cli"
 
-[tool.setuptools.packages.find]
-include = ["esphome_pc_monitor*"]
+[tool.setuptools]
+py-modules = ["esphome_pc_monitor"]
+
+[tool.setuptools.packages]
+find = {include = ["esphome_pc_monitor*"]}
