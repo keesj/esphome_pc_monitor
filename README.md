@@ -84,6 +84,7 @@ All GPU temperature reads go through a single `read_gpu_temperatures()` function
 - 5+ GPUs: Individual sensors plus "GPU Statistics" with avg/max
 
 ### MAC Address Generation
+
 MAC addresses are deterministically generated from the device name using MD5 hash. This ensures the same device always has the same MAC regardless of when it's started.
 
 ## License
