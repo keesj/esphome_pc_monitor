@@ -1,0 +1,26 @@
+# User Installation
+#
+# Install installation script:
+#
+#  mkdir -p  ~/.config/systemd/user/
+#  cp ./esphome_pc_monitor.service ~/.config/systemd/user/
+#  systemctl --user daemon-reload 
+#  systemctl --user enable --now esphome_pc_monitor.service
+#
+# Viewing logs:
+#
+#   journalctl --user -u esphome_pc_monitor.service -f
+[Unit]
+Description=esphome pc monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=bash -c ". ${HOME}/.venv/bin/activate ;  esphome-pc-monitor"
+#ExecStart=esphome-pc-monitor
+Restart=on-failure
+RestartSec=5
+ExecStartPre=/bin/sleep 1
+
+[Install]
+WantedBy=default.target
