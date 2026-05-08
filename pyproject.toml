@@ -9,8 +9,7 @@ description = "PC temperature monitoring system that exposes CPU and GPU tempera
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "aioesphomeserver @ git+https://github.com/peterkeen/aioesphomeserver.git",
-    "colored"
+    "aioesphomeserver @ git+https://github.com/peterkeen/aioesphomeserver.git@22b617df2e4bb008f92dde36343822ae27620b76"
 ]
 
 [project.scripts]

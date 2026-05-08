@@ -76,6 +76,11 @@ class TemperatureSensor(SensorEntity):
         return 0.0
 
 
+async def get_gpu_count():
+    temps = await read_gpu_temperatures()
+    return len(temps)
+
+
 async def main():
     parser = argparse.ArgumentParser(description="PC Temperature Monitor")
     parser.add_argument(
@@ -186,11 +191,6 @@ async def main():
         device.run(api_port=args.api_port, web_port=web_port),
         update_states(),
     )
-
-
-async def get_gpu_count():
-    temps = await read_gpu_temperatures()
-    return len(temps)
 
 
 def main_cli():
